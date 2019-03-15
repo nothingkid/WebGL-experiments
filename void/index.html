@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <title>Void</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <canvas id="3d-void"></canvas>
+    </div>
+
+    <script src="public/three.js" defer></script>
+    <script src="public/dat.gui.min.js" defer></script>
+    <script src="public/OrbitControls.js" defer></script>
+
+    <script src="public/CopyShader.js" defer></script>
+    <script src="public/AfterimageShader.js" defer></script>
+
+    <script src="public//EffectComposer.js" defer></script>
+    <script src="public/RenderPass.js" defer></script>
+    <script src="public/MaskPass.js" defer></script>
+    <script src="public/ShaderPass.js" defer></script>
+    <script src="public/AfterimagePass.js" defer></script>
+    <script src="public/LuminosityHighPassShader.js" defer></script>
+    <script src="public/UnrealBloomPass.js" defer></script>
+
+    <script src="void/main.js" defer></script>
+</body>
+</html>

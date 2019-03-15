@@ -1,0 +1,5 @@
+# System and generated files.
+.idea
+
+# Directories
+node_modules/
