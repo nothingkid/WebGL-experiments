@@ -5,9 +5,9 @@ Trying to learn new thing or two. And do something (interesting) out of it.
 
 ### List
 
-###### &quote;Void'. Inspired by 'MUSE&quote;
+##### &quote;Void'. Inspired by 'MUSE&quote;
 
 ### Helpers
 
-###### BoxGrid
+##### BoxGrid
 Creates magic box consisting of magic 3d little opaque boxes
