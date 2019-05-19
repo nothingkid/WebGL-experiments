@@ -14,7 +14,7 @@
  * @constructor
  */
 
-let GridBox = function(width, height, depth, xSegments, ySegments, zSegments, options) {
+let GridBoxGeometry = function(width, height, depth, xSegments, ySegments, zSegments, options) {
     if (!options) {
         options = {};
     }
@@ -30,6 +30,10 @@ let GridBox = function(width, height, depth, xSegments, ySegments, zSegments, op
     ySegments = ySegments || 1;
     zSegments = zSegments || 1;
 
+    xSegments = Math.round(xSegments);
+    ySegments = Math.round(ySegments);
+    zSegments = Math.round(zSegments);
+
     let xVertices = xSegments + 1;
     let yVertices = ySegments + 1;
     let zVertices = zSegments + 1;
@@ -39,27 +43,20 @@ let GridBox = function(width, height, depth, xSegments, ySegments, zSegments, op
     let yStep = Math.round(height / ySegments * 100) / 100;
     let zStep = Math.round(depth / zSegments * 100) / 100;
 
-    // console.log('xStep', xStep);
-    // console.log('yStep', yStep);
-    // console.log('zStep', zStep);
-
     let positions = [];
     let vertices = [];
     for (let z = 0; z < zVertices; z += 1) {
         for (let y = 0; y < yVertices; y += 1) {
             for (let x = 0; x < xVertices; x += 1) {
+                positions.push(xStep * x);
+                positions.push(yStep * y);
+                positions.push(zStep * z);
 
-                let p = {
-                    x: xStep * x,
-                    y: yStep * y,
-                    z: zStep * z
-                };
-
-                positions.push(p.x);
-                positions.push(p.y);
-                positions.push(p.z);
-
-                vertices.push(p);
+                vertices.push({
+                    x: x,
+                    y: y,
+                    z: z
+                })
             }
         }
     }
@@ -67,56 +64,56 @@ let GridBox = function(width, height, depth, xSegments, ySegments, zSegments, op
     //one segments consist of 2 vertices
     let segmentsIndices = [];
     for (let i = 0; i < vertices.length; i += 1) {
-        let p = vertices[i];
+        let v = vertices[i];
 
         //only sides of grid
         if (options.wireframe &&
-            p.z > 0 && p.z < depth &&
-            p.x > 0 && p.x < width) {
+            v.z > 0 && v.z < zSegments &&
+            v.x > 0 && v.x < xSegments) {
             continue;
         }
 
-        if (p.x < width) {
+        if (v.x < xSegments) {
 
             if (options.wireframe) {
 
-                if (p.z <= 0 || p.z >= depth) {
+                if (v.z <= 0 || v.z >= zSegments) {
                     segmentsIndices.push(i);
-                    segmentsIndices.push(getVertexIndex(p.x + xStep, p.y, p.z));
+                    segmentsIndices.push(getVertexIndex(v.x + 1, v.y, v.z));
                 }
 
             } else {
                 segmentsIndices.push(i);
-                segmentsIndices.push(getVertexIndex(p.x + xStep, p.y, p.z));
+                segmentsIndices.push(getVertexIndex(v.x + 1, v.y, v.z));
             }
 
         }
 
-        if (p.y < height) {
+        if (v.y < ySegments) {
 
             if (!options.cornerSides &&
-                (p.x <= 0 || p.x >= width) &&
-                (p.z <= 0 || p.z >= depth)) {
+                (v.x <= 0 || v.x >= xSegments) &&
+                (v.z <= 0 || v.z >= zSegments)) {
                 //do nothing
             } else {
                 segmentsIndices.push(i);
-                segmentsIndices.push(getVertexIndex(p.x, p.y + yStep, p.z));
+                segmentsIndices.push(getVertexIndex(v.x, v.y + 1, v.z));
             }
 
         }
 
-        if (p.z < depth) {
+        if (v.z < zSegments) {
 
             if (options.wireframe) {
 
-                if (p.x <= 0 || p.x >= width) {
+                if (v.x <= 0 || v.x >= xSegments) {
                     segmentsIndices.push(i);
-                    segmentsIndices.push(getVertexIndex(p.x, p.y, p.z + zStep));
+                    segmentsIndices.push(getVertexIndex(v.x, v.y, v.z + 1));
                 }
 
             } else {
                 segmentsIndices.push(i);
-                segmentsIndices.push(getVertexIndex(p.x, p.y, p.z + zStep));
+                segmentsIndices.push(getVertexIndex(v.x, v.y, v.z + 1));
             }
 
         }
@@ -128,19 +125,22 @@ let GridBox = function(width, height, depth, xSegments, ySegments, zSegments, op
     geometry.addAttribute('position', positionsAttribute);
     geometry.setIndex(segmentsIndices);
 
-    let lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial());
-    this.add(lines);
+    geometry.translate(
+        -width / 2,
+        -height /2,
+        -depth / 2
+    );
+
+    return geometry;
+
+    // let lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial());
+    // this.add(lines);
 
     //helpers
 
     function getVertexIndex(x, y, z) {
-        //normalize
-        x = x / xStep;
-        y = y / yStep;
-        z = z / zStep;
-
         return x + (y * xVertices) + (z * xVertices * yVertices);
     }
 };
-GridBox.prototype = Object.create(THREE.Group.prototype);
-GridBox.prototype.constructor = GridBox;
+GridBoxGeometry.prototype = Object.create(THREE.Group.prototype);
+GridBoxGeometry.prototype.constructor = GridBoxGeometry;

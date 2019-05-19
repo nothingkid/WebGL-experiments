@@ -1,7 +1,7 @@
 'use strict';
 
-let SCREEN_WIDTH = window.innerWidth;
-let SCREEN_HEIGHT = window.innerHeight;
+let screenWidth = window.innerWidth;
+let screenHeight = window.innerHeight;
 
 let userPlanes = [];
 
@@ -20,9 +20,7 @@ const FIRST_SPEED = 1;
 const SECOND_SPEED = 2;
 const THIRD_SPEED = 2;
 
-const xSize = 10;
-const ySize = 30;
-const zSize = 1;
+let shaderTime = 0;
 
 //SCENE
 let scene = new THREE.Scene();
@@ -39,7 +37,7 @@ camera.position.y = -VOID_HEIGHT / 2;
 // let cameraRight = new THREE.OrthographicCamera(300, -300, 300, -300);
 
 //RENDERER
-let canvas = document.getElementById('3d-void');
+let canvas = document.getElementById('void');
 let renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
 renderer.setClearColor(0x000000);
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -50,67 +48,54 @@ renderer.autoClear = false;
 let composer = new THREE.EffectComposer(renderer);
 composer.addPass(new THREE.RenderPass(scene, camera));
 
-var bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2( window.innerWidth, window.innerHeight ), 2, 0, 0);
+let bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2( window.innerWidth, window.innerHeight ), 2, 0, 0);
 composer.addPass(bloomPass);
+
+let rgbPass = new THREE.ShaderPass( THREE.RGBShiftShader );
+rgbPass.uniforms['angle'].value = Math.PI;
+rgbPass.uniforms['amount'].value = 0.0023;
+composer.addPass(rgbPass);
+
+let staticPass = new THREE.ShaderPass(THREE.StaticShader);
+staticPass.uniforms['amount'].value = 0.035;
+staticPass.uniforms['size'].value = 1;
+composer.addPass(staticPass);
 
 let afterimagePass = new THREE.AfterimagePass();
 afterimagePass.renderToScreen = true;
 composer.addPass(afterimagePass);
 
+//
+
 //GEOMETRY
 let cylinderGeometry = new THREE.CylinderBufferGeometry(VOID_RADIUS, VOID_RADIUS, VOID_HEIGHT, 4, 8, true);
 let cylinderEdges = new THREE.EdgesGeometry(cylinderGeometry);
 
-// let width = Math.sqrt(Math.pow(2*VOID_RADIUS, 2) / 2); //2*width^2 = (2*VOID_RADIUS)^2; width == height
-let width = Math.sqrt(Math.pow(VOID_RADIUS, 2) / 2); //2*width^2 = VOID_RADIUS^2; width == height
-let planeGeometry = new THREE.PlaneBufferGeometry(width, width, 1, 1);
+let pSideWidth = Math.sqrt(Math.pow(VOID_RADIUS, 2) / 2); //2*width^2 = VOID_RADIUS^2; width == height
+let planeGeometry = new THREE.PlaneBufferGeometry(pSideWidth, pSideWidth, 1, 1);
 let planeEdges = new THREE.EdgesGeometry(planeGeometry);
 
-//GEOMETRY: GRIDS
-let n = xSize * ySize * zSize;
-let gridGeometry = new THREE.BufferGeometry();
-//get the positions of every dot in 3d space
-let positions = [];
-for (let i = 0; i < n; i++) {
-    let p = mapTo3D(i);
-    positions.push((p.x - xSize / 2) * 3.14);
-    positions.push((p.y - ySize / 2) * 5);
-    positions.push((p.z - zSize / 2));
-}
+//GRID
+let gSideWidth = Math.sqrt(Math.pow(2*VOID_RADIUS, 2) / 2);
+let gridBoxGeometry = new GridBoxGeometry(gSideWidth, VOID_HEIGHT, gSideWidth, 10, 2 * gSideWidth, 10, {
+    wireframe: true,
+    cornerSides: false
+});
+let gridMaterial = new THREE.LineBasicMaterial({
+    linewidth: 2
+});
+gridMaterial.transparent = true;
+gridMaterial.opacity = 0.03;
 
-let positionAttribute = new THREE.Float32BufferAttribute(positions, 3);
-gridGeometry.addAttribute("position", positionAttribute);
-
-let indexPairs = [];
-for (let i = 0; i < n; i++) {
-    let p = mapTo3D(i);
-    if (p.x + 1 < xSize) {
-        indexPairs.push(i);
-        indexPairs.push(mapFrom3D(p.x + 1, p.y, p.z));
-    }
-    if (p.y + 1 < ySize) {
-        indexPairs.push(i);
-        indexPairs.push(mapFrom3D(p.x, p.y + 1, p.z));
-    }
-    if (p.z + 1 < zSize) {
-        indexPairs.push(i);
-        indexPairs.push(mapFrom3D(p.x, p.y, p.z + 1));
-    }
-}
-
-gridGeometry.setIndex(indexPairs);
+let gridBox = new THREE.LineSegments(gridBoxGeometry, gridMaterial);
+gridBox.rotation.y = Math.PI / 4;
+scene.add(gridBox);
 
 //MATERIAL
-// let cylinderMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
 let cylinderMaterial = new THREE.LineBasicMaterial({ color: 0x5d963d, linewidth: 2 });
 
-// let planeMaterial1 = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 1 });
 let planeMaterial1 = new THREE.LineBasicMaterial({ color: 0x5d963d, linewidth: 1 });
 let planeMaterial2 = planeMaterial1.clone();
-
-let gridMaterial = new THREE.LineBasicMaterial();
-gridMaterial.transparent = true;
-gridMaterial.opacity = 0.2;
 
 //MESH
 let cylinder = new THREE.LineSegments(cylinderEdges, cylinderMaterial);
@@ -127,42 +112,17 @@ plane2.state = PLANE_STATE_STOPPED;
 scene.add(plane1);
 scene.add(plane2);
 
-let grid1 = new THREE.LineSegments(gridGeometry, gridMaterial);
-grid1.rotation.y = 0.784;
-
-grid1.position.x = 11.55;
-grid1.position.y = 5;
-grid1.position.z = 9.3;
-scene.add(grid1);
-
-let grid2 = grid1.clone();
-grid2.position.x = -8.6;
-grid2.position.z = -10.8;
-scene.add(grid2);
-
-let grid3 = grid1.clone();
-grid3.rotation.y = 2.35;
-grid3.position.x = 9.2;
-grid3.position.z = -11.5;
-scene.add(grid3);
-
-let grid4 = grid1.clone();
-grid4.rotation.y = 2.35;
-grid4.position.x = -10.7;
-grid4.position.z = 8.6;
-scene.add(grid4);
-
 //
 
 window.addEventListener('resize', onWindowResize);
-document.body.addEventListener('click', addUserPlane);
+document.body.addEventListener('click', createNewUserPlane);
 
 camera.lookAt(cylinder.position);
 
 //TESTING
 // cameraRight.position.set(50, -50, 50);
 // cameraRight.lookAt(0, -50, 0);
-//
+
 // let controls = new THREE.OrbitControls(cameraRight, renderer.domElement);
 // controls.enableDamping = true;
 // controls.dampingFactor = 0.25;
@@ -171,14 +131,14 @@ camera.lookAt(cylinder.position);
 render();
 
 //TESTING
-// let gui = new dat.GUI();
+let gui = new dat.GUI();
 // let cameraGui = gui.addFolder('camera right');
 // cameraGui.add(cameraRight.position, 'x');
 // cameraGui.add(cameraRight.position, 'y');
 // cameraGui.add(cameraRight.position, 'z');
 // cameraGui.add(camera, 'fov');
 // cameraGui.open();
-//
+
 // let planeGui = gui.addFolder('plane');
 // planeGui.add(plane1.position, 'x');
 // planeGui.add(plane1.position, 'y');
@@ -188,6 +148,9 @@ render();
 //RENDER & ANIMATE FUNCTIONS
 function render() {
     requestAnimationFrame(render);
+
+    shaderTime += 0.1;
+    staticPass.uniforms[ 'time' ].value = shaderTime;
 
     //TESTING
     // camera.lookAt(cylinder.position);
@@ -201,13 +164,13 @@ function render() {
     animateUserPlanes();
 
     //TESTING
-    // renderer.setViewport(0, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT);
+    // renderer.setViewport(0, 0, screenWidth / 2, screenHeight);
     // cameraHelper.visible = false;
 
-    composer.render();
+    composer.render(0.1);
 
     //TESTING
-    // renderer.setViewport(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT);
+    // renderer.setViewport(screenWidth / 2, 0, screenWidth / 2, screenHeight);
     // cameraHelper.visible = true;
     // renderer.render(scene, cameraRight);
 }
@@ -216,7 +179,7 @@ function animatePlanes() {
     if (animatePlanes.delayed) { return; }
 
     //endY always is less than startY
-    let half = Y_END + (VOID_HEIGHT / 2 + Y_START) / 2;
+    let half = (Math.abs(Y_START) - Math.abs(Y_END)) / 2;
 
     if (plane1.position.y <= Y_END) {
         plane1.position.y = Y_START;
@@ -224,7 +187,7 @@ function animatePlanes() {
         plane1.state = PLANE_STATE_STOPPED;
         plane2.speed = FIRST_SPEED;
     }
-    if (plane1.position.y <= half - 20) {
+    if (plane1.position.y <= half - 12) {
         plane2.state = PLANE_STATE_MOVES_DOWN;
         plane2.speed = SECOND_SPEED;
         plane1.speed = FIRST_SPEED;
@@ -236,7 +199,7 @@ function animatePlanes() {
         plane2.state = PLANE_STATE_STOPPED;
         plane1.speed = FIRST_SPEED;
     }
-    if (plane2.position.y <= half - 20) {
+    if (plane2.position.y <= half - 12) {
         plane1.state = PLANE_STATE_MOVES_DOWN;
         plane1.speed = SECOND_SPEED;
         plane2.speed = FIRST_SPEED;
@@ -273,6 +236,7 @@ function animateUserPlanes() {
                 case PLANE_STATE_CREATED:
                     scene.add(userPlane);
                     userPlane.state = PLANE_STATE_MOVES_DOWN;
+                    break;
                 case PLANE_STATE_MOVES_DOWN:
                     if (userPlane.position.y <= Y_END) {
                         userPlane.state = PLANE_STATE_READY_FOR_DISPOSE;
@@ -297,7 +261,7 @@ function animateUserPlanes() {
     animateUserPlanes.delayed = true;
 }
 
-function addUserPlane() {
+function createNewUserPlane() {
     if (userPlanes.length >= 5) {
         return;
     }
@@ -314,27 +278,15 @@ function addUserPlane() {
 
 // HELPERS
 
-//thanks to j4nw for sharing. https://discourse.threejs.org/t/3d-grid-of-lines/3850.
-function mapTo3D(i) {
-    let z = Math.floor(i / (xSize * ySize));
-    i -= z * xSize * ySize;
-    let y = Math.floor(i / xSize);
-    let x = i % xSize;
-    return { x: x, y: y, z: z };
-}
-function mapFrom3D(x, y, z) {
-    return x + y * xSize + z * xSize * ySize;
-}
-
 function calcAspect() {
-    SCREEN_WIDTH = window.innerWidth;
-    SCREEN_HEIGHT = window.innerHeight;
+    screenWidth = window.innerWidth;
+    screenHeight = window.innerHeight;
 
     //in this case: cameraCount = 2
     //50 = 100 / cameraCount;
-    // return Math.round(SCREEN_WIDTH / SCREEN_HEIGHT * 50) / 100;
+    // return Math.round((screenWidth / 2) / screenHeight * 100) / 100;
 
-    return Math.round(SCREEN_WIDTH / SCREEN_HEIGHT * 100) / 100;
+    return Math.round(screenWidth / screenHeight * 100) / 100;
 }
 
 function onWindowResize() {

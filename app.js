@@ -13,6 +13,7 @@ app.get('/void', function (req, res) {
 app.use('/void', express.static('void'));
 
 app.use('/public', express.static('public'));
+app.use('/helpers', express.static('helpers'));
 
 app.listen(3000, function () {
     console.log('app listening on port 3000!');
